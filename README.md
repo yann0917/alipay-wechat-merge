@@ -61,6 +61,11 @@ flowchart LR
 
 ### Step 3 分析账单数据
 
+1. 执行 `awm chart`
+2. 选择合并后的账单 `output_xxxxxxxxxx.csv`
+3. 按 enter 键执行
+4. 输出 `charts.html` 为分析好的账单，使用浏览器打开即可查看
+
 ## LICENSE
 
 [MIT](./LICENSE)
