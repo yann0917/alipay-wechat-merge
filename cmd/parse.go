@@ -3,12 +3,15 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/gocarina/gocsv"
 	"github.com/manifoldco/promptui"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
@@ -18,6 +21,34 @@ type Bill struct {
 	title  []string   // 标题
 	aliPay [][]string // 支付宝账单
 	wechat [][]string // 微信账单
+}
+
+type Account struct {
+	TransAt       DateTime `csv:"交易时间"`
+	TransType     string   `csv:"交易类型"`
+	TransFrom     string   `csv:"交易对方"`
+	GoodsName     string   `csv:"商品"`
+	IO            string   `csv:"收/支"`
+	Money         float64  `csv:"金额(元)"`
+	PayType       string   `csv:"支付方式"`
+	CurrentStatus string   `csv:"当前状态"`
+	TransNo       string   `csv:"交易单号"`
+	BusinessNo    string   `csv:"商户单号"`
+	Remark        string   `csv:"备注"`
+}
+
+type Accounts []*Account
+
+func (I Accounts) Len() int {
+	return len(I)
+}
+
+func (I Accounts) Less(i, j int) bool {
+	return I[i].TransAt.Before(I[j].TransAt.Time)
+}
+
+func (I Accounts) Swap(i, j int) {
+	I[i], I[j] = I[j], I[i]
 }
 
 func (b *Bill) ReadAliPay(path string) error {
@@ -69,7 +100,7 @@ func (b *Bill) ReadAliPay(path string) error {
 
 			// 微信账单
 			// []string{"交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "当前状态", "交易单号", "商户单号", "备注"}
-			tempV := []string{temp[2], temp[6], temp[7], temp[8], temp[10], "¥" + temp[9], "支付宝", temp[15], temp[0], temp[1], temp[14]}
+			tempV := []string{temp[2], temp[6], temp[7], temp[8], temp[10], temp[9], "支付宝", temp[15], temp[0], temp[1], temp[14]}
 			// fmt.Printf("%#v\n", temp)
 			b.aliPay = append(b.aliPay, tempV)
 		}
@@ -108,6 +139,7 @@ func (b *Bill) ReadWechatPay(path string) error {
 			for _, v1 := range v {
 				temp = append(temp, strings.Trim(strings.Trim(v1, "/"), " "))
 			}
+			temp[5] = strings.Trim(temp[5], "¥")
 			// TODO: 从备注中提取出有服务费的项目，填写进入收支明细中。
 			b.wechat = append(b.wechat, temp)
 		}
@@ -122,10 +154,6 @@ func (b *Bill) WriteMergeFile(path string) error {
 		fmt.Println(err)
 	}
 	defer destFile.Close()
-	_, err = destFile.WriteString("\xEF\xBB\xBF")
-	if err != nil {
-		return err
-	} // 写入一个UTF-8 BOM
 
 	df := csv.NewWriter(destFile)
 	b.GetTitle()
@@ -154,33 +182,30 @@ func (b *Bill) WriteMergeFile(path string) error {
 }
 
 // ReadMergeFile 读取合并后的账单
-func (b *Bill) ReadMergeFile(path string) (data [][]string, err error) {
+func (b *Bill) ReadMergeFile(path string) (accounts []*Account, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	defer f.Close()
-	reader := csv.NewReader(f)
 
-	reader.FieldsPerRecord = -1
-	data, err = reader.ReadAll()
-	if err != nil {
-		fmt.Println(err)
+	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+		r := csv.NewReader(in)
+		r.LazyQuotes = true
+		r.FieldsPerRecord = -1
+		return r
+	})
+
+	if err = gocsv.UnmarshalFile(f, &accounts); err != nil {
 		return
 	}
 	return
 }
 
-// 支付宝账单
-// []string{"交易号", "商家订单号", "交易创建时间", "付款时间 ", "最近修改时间", "交易来源地", "类型", "交易对方", "商品名称", "金额（元）", "收/支", "交易状态 ", "服务费（元）", "成功退款（元）", "备注", "资金状态"}
-
-// 微信账单
-// []string{"交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "当前状态", "交易单号", "商户单号", "备注"}
-
 // GetTitle 转换 title
 func (b *Bill) GetTitle() {
-	titles := []string{"交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "交易状态", "交易单号", "商户单号", "备注", "服务费(元)"}
+	titles := []string{"交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "支付方式", "交易状态", "交易单号", "商户单号", "备注"}
 	b.title = append(b.title, titles...)
 }
 
@@ -244,4 +269,27 @@ func PromptSelectAnalysis() string {
 	fmt.Printf("You choose: %s\n", result)
 
 	return result
+}
+
+type DateTime struct {
+	time.Time
+}
+
+var layout = "2006-01-02 15:04:05"
+
+// MarshalCSV Convert the internal date as CSV string
+func (date *DateTime) MarshalCSV() (string, error) {
+	return date.Format(layout), nil
+}
+
+// String You could also use the standard Stringer interface
+func (date *DateTime) String() string {
+	return date.String() // Redundant, just for example
+}
+
+// UnmarshalCSV Convert the CSV string as internal date
+func (date *DateTime) UnmarshalCSV(csv string) (err error) {
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	date.Time, err = time.ParseInLocation(layout, csv, loc)
+	return err
 }
