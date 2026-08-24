@@ -117,6 +117,7 @@ func (b *Bill) ReadWechatPay(path string) error {
 	defer f.Close()
 
 	reader := csv.NewReader(f)
+	reader.LazyQuotes = true
 	reader.FieldsPerRecord = -1
 
 	data, err := reader.ReadAll()
