@@ -94,10 +94,10 @@ func Bar(list []*Account) {
 			PageTitle: "账单分析",
 			Theme:     types.ThemeMacarons}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: true,
+			Show: opts.Bool(true),
 		}),
 		charts.WithTooltipOpts(opts.Tooltip{
-			Show: true,
+			Show: opts.Bool(true),
 		}),
 		charts.WithTitleOpts(opts.Title{
 			Title:    "收支分析",
@@ -125,13 +125,13 @@ func Bar(list []*Account) {
 		PageTitle: "账单分析",
 		Theme:     types.ThemeMacarons}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: true,
+			Show: opts.Bool(true),
 		}),
 		charts.WithDataZoomOpts(opts.DataZoom{
 			Type: "slider",
 		}),
 		charts.WithTooltipOpts(opts.Tooltip{
-			Show: true,
+			Show: opts.Bool(true),
 		}),
 		charts.WithTitleOpts(opts.Title{
 			Title:    "收支详情分析",
@@ -142,7 +142,7 @@ func Bar(list []*Account) {
 	line.SetXAxis(lineX).
 		AddSeries("收入", generateLineItems(list, 1)).
 		AddSeries("支出", generateLineItems(list, 2)).
-		SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
+		SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(true)}))
 
 	// Where the magic happens
 	f, _ := os.Create("charts.html")

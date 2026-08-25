@@ -5,7 +5,7 @@ all: clean setup build-linux build-osx build-windows
 
 BUILD_ENV=CGO_ENABLED=0
 BUILD=`date +%FT%T%z`
-LDFLAGS=-ldflags "-w -s -X main.Version=${VERSION} -X main.Build=${BUILD}"
+LDFLAGS=-ldflags "-w -s -X github.com/yann0917/alipay-wechat-merge/cmd.Version=${VERSION} -X github.com/yann0917/alipay-wechat-merge/cmd.Build=${BUILD}"
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
