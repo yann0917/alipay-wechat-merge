@@ -1,13 +1,13 @@
 module github.com/yann0917/alipay-wechat-merge
 
-go 1.18
+go 1.26.0
 
 require (
 	github.com/go-echarts/go-echarts/v2 v2.7.2
 	github.com/gocarina/gocsv v0.0.0-20260824135904-1713ebc4797a
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/text v0.3.8
+	golang.org/x/text v0.42.0
 )
 
 require (
